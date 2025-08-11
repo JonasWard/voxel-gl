@@ -86,14 +86,6 @@ const InstancedCubes: React.FC<{ tetrahedronIndex: 0 | 1 | 2 | 3 | 4 }> = ({ tet
     }
   }, [meshRef.current]);
 
-  // useFrame((_, delta) => {
-  //   if (!meshRef.current) return;
-
-  //   // Rotate the entire grid slowly
-  //   meshRef.current.rotation.y += delta * 0.1;
-  //   meshRef.current.rotation.x += delta * 0.05;
-  // });
-
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, gridCount ** 3]} geometry={tGs[tetrahedronIndex][0]}>
       <meshStandardMaterial />
