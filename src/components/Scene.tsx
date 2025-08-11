@@ -57,7 +57,7 @@ const InstancedCubes: React.FC<{ tetrahedronIndex: 0 | 1 | 2 | 3 | 4 }> = ({ tet
                 gridCount) *
                 5,
               1.0,
-              0.8
+              0.5
             )
           );
         }
