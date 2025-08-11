@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
-import Scene from './components/Scene';
+import { Scene } from './components/Scene';
 
 function App() {
   const [count, setCount] = useState(0);
