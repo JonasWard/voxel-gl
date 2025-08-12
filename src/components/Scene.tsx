@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { baseBuffer, bases } from './tetrahedrons';
+import { surfaceSDF, type SurfaceType } from './surfaces';
 
 const MR = new THREE.Matrix4().makeRotationX(Math.PI / 2);
 const M0 = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -12,23 +13,11 @@ interface SceneProps {
   thickness: number;
   enabledTetrahedrons: [boolean, boolean, boolean, boolean, boolean];
   mirrorOnUneven: boolean;
+  surfaceType: SurfaceType;
 }
 
 type TetrahedronIndexType = 0 | 1 | 2 | 3 | 4;
 const baseVector = new THREE.Vector4(0.384, 0.384, 0.384, 1);
-
-// Gyroid SDF function
-const gyroidSDF = (x: number, y: number, z: number, scale: number = 1.0, thickness: number = 0.3) => {
-  const sx = x * scale;
-  const sy = y * scale;
-  const sz = z * scale;
-
-  // Gyroid equation: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x)
-  const gyroid = Math.sin(sx) * Math.cos(sy) + Math.sin(sy) * Math.cos(sz) + Math.sin(sz) * Math.cos(sx);
-
-  // Return distance to surface (negative inside, positive outside)
-  return Math.abs(gyroid) - thickness;
-};
 
 const InstancedCubes: React.FC<{
   tetrahedronIndex: TetrahedronIndexType;
@@ -36,7 +25,8 @@ const InstancedCubes: React.FC<{
   scale: number;
   thickness: number;
   mirrorOnUneven: boolean;
-}> = ({ tetrahedronIndex, gridSize, scale, thickness, mirrorOnUneven }) => {
+  surfaceType: SurfaceType;
+}> = ({ tetrahedronIndex, gridSize, scale, thickness, mirrorOnUneven, surfaceType }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null!);
 
   // Set up instances
@@ -60,7 +50,7 @@ const InstancedCubes: React.FC<{
 
           const c = baseVector.clone().applyMatrix4(M);
           // Create a gradient color based on position
-          const g = gyroidSDF(c.x, c.y, c.z, scale, thickness);
+          const g = surfaceSDF(surfaceType, c.x, c.y, c.z, scale, thickness);
           if (g < 0) meshRef.current.setMatrixAt(i, M);
           else meshRef.current.setMatrixAt(i, M0);
           meshRef.current.setColorAt(i, new THREE.Color().setHSL(((c.x + c.y + c.z) / gridSize) * 5, 1.0, 0.5));
@@ -71,7 +61,7 @@ const InstancedCubes: React.FC<{
 
     meshRef.current.instanceMatrix.needsUpdate = true;
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
-  }, [gridSize, scale, thickness, mirrorOnUneven]);
+  }, [gridSize, scale, thickness, mirrorOnUneven, surfaceType]);
 
   return (
     <instancedMesh
@@ -85,7 +75,14 @@ const InstancedCubes: React.FC<{
   );
 };
 
-export const Scene: React.FC<SceneProps> = ({ gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven }) => {
+export const Scene: React.FC<SceneProps> = ({
+  gridSize,
+  scale,
+  thickness,
+  enabledTetrahedrons,
+  mirrorOnUneven,
+  surfaceType
+}) => {
   return (
     <>
       <ambientLight intensity={0.4} />
@@ -94,49 +91,15 @@ export const Scene: React.FC<SceneProps> = ({ gridSize, scale, thickness, enable
       {enabledTetrahedrons.map((b, index) =>
         b ? (
           <InstancedCubes
+            key={index}
             tetrahedronIndex={index as TetrahedronIndexType}
             gridSize={gridSize}
             scale={scale}
             thickness={thickness}
             mirrorOnUneven={mirrorOnUneven}
+            surfaceType={surfaceType}
           />
         ) : null
-      )}
-      {enabledTetrahedrons[1] && (
-        <InstancedCubes
-          tetrahedronIndex={1}
-          gridSize={gridSize}
-          scale={scale}
-          thickness={thickness}
-          mirrorOnUneven={mirrorOnUneven}
-        />
-      )}
-      {enabledTetrahedrons[2] && (
-        <InstancedCubes
-          tetrahedronIndex={2}
-          gridSize={gridSize}
-          scale={scale}
-          thickness={thickness}
-          mirrorOnUneven={mirrorOnUneven}
-        />
-      )}
-      {enabledTetrahedrons[3] && (
-        <InstancedCubes
-          tetrahedronIndex={3}
-          gridSize={gridSize}
-          scale={scale}
-          thickness={thickness}
-          mirrorOnUneven={mirrorOnUneven}
-        />
-      )}
-      {enabledTetrahedrons[4] && (
-        <InstancedCubes
-          tetrahedronIndex={4}
-          gridSize={gridSize}
-          scale={scale}
-          thickness={thickness}
-          mirrorOnUneven={mirrorOnUneven}
-        />
       )}
       <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} minDistance={0.1} maxDistance={1000} />
     </>

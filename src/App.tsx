@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './components/Scene';
 import { useState, useEffect, useCallback } from 'react';
+import { surfaceTypes, type SurfaceType } from './components/surfaces';
 
 function App() {
   // Helper function to get URL parameters
@@ -15,7 +16,8 @@ function App() {
         ?.split(',')
         .map((t) => t === 'true') as [boolean, boolean, boolean, boolean, boolean]) || [true, true, true, true, true],
       mirrorOnUneven: params.get('mirror') !== 'false',
-      showConfig: params.get('showConfig') !== 'false'
+      showConfig: params.get('showConfig') !== 'false',
+      surfaceType: (params.get('surface') as SurfaceType) || 'gyroid'
     };
   }, []);
 
@@ -31,6 +33,7 @@ function App() {
     params.set('tetrahedrons', newState.enabledTetrahedrons.join(','));
     params.set('mirror', newState.mirrorOnUneven.toString());
     params.set('showConfig', newState.showConfig.toString());
+    params.set('surface', newState.surfaceType);
 
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
@@ -59,7 +62,7 @@ function App() {
   }, [getUrlParams]);
 
   // Destructure state for easier access
-  const { gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven, showConfig } = state;
+  const { gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven, showConfig, surfaceType } = state;
 
   return (
     <div className="w-[100svw] h-[100svh] relative">
@@ -70,6 +73,7 @@ function App() {
           thickness={thickness}
           enabledTetrahedrons={enabledTetrahedrons}
           mirrorOnUneven={mirrorOnUneven}
+          surfaceType={surfaceType}
         />
       </Canvas>
 
@@ -175,6 +179,28 @@ function App() {
                          [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-purple-500 
                          [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-200">
+              Surface Type:{' '}
+              <span className="text-cyan-400 font-mono">
+                {surfaceTypes.find((s) => s.value === surfaceType)?.label}
+              </span>
+            </label>
+            <select
+              value={surfaceType}
+              onChange={(e) => updateState({ surfaceType: e.target.value as SurfaceType })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm
+                         focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                         hover:bg-gray-600 transition-colors cursor-pointer"
+            >
+              {surfaceTypes.map((surface) => (
+                <option key={surface.value} value={surface.value} className="bg-gray-700">
+                  {surface.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Mirror Switch */}
@@ -312,6 +338,28 @@ function App() {
                            [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-purple-500 
                            [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-none"
               />
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-lg font-semibold text-gray-200">
+                Surface Type:{' '}
+                <span className="text-cyan-400 font-mono">
+                  {surfaceTypes.find((s) => s.value === surfaceType)?.label}
+                </span>
+              </label>
+              <select
+                value={surfaceType}
+                onChange={(e) => updateState({ surfaceType: e.target.value as SurfaceType })}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-lg
+                           focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                           hover:bg-gray-600 transition-colors cursor-pointer"
+              >
+                {surfaceTypes.map((surface) => (
+                  <option key={surface.value} value={surface.value} className="bg-gray-700">
+                    {surface.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Mirror Switch */}
