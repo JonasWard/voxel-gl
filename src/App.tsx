@@ -1,19 +1,65 @@
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './components/Scene';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function App() {
-  const [gridSize, setGridSize] = useState(20);
-  const [scale, setScale] = useState(0.13);
-  const [thickness, setThickness] = useState(0.1);
-  const [enabledTetrahedrons, setEnabledTetrahedrons] = useState<[boolean, boolean, boolean, boolean, boolean]>([
-    true,
-    true,
-    true,
-    true,
-    true
-  ]);
-  const [mirrorOnUneven, setMirrorOnUneven] = useState(true);
+  // Helper function to get URL parameters
+  const getUrlParams = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      gridSize: Number(params.get('gridSize')) || 20,
+      scale: Number(params.get('scale')) || 0.13,
+      thickness: Number(params.get('thickness')) || 0.1,
+      enabledTetrahedrons: (params
+        .get('tetrahedrons')
+        ?.split(',')
+        .map((t) => t === 'true') as [boolean, boolean, boolean, boolean, boolean]) || [true, true, true, true, true],
+      mirrorOnUneven: params.get('mirror') !== 'false',
+      showConfig: params.get('showConfig') !== 'false'
+    };
+  }, []);
+
+  // Initialize state from URL
+  const [state, setState] = useState(getUrlParams);
+
+  // Update URL when state changes
+  const updateUrl = useCallback((newState: typeof state) => {
+    const params = new URLSearchParams();
+    params.set('gridSize', newState.gridSize.toString());
+    params.set('scale', newState.scale.toString());
+    params.set('thickness', newState.thickness.toString());
+    params.set('tetrahedrons', newState.enabledTetrahedrons.join(','));
+    params.set('mirror', newState.mirrorOnUneven.toString());
+    params.set('showConfig', newState.showConfig.toString());
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  }, []);
+
+  // Update state and URL
+  const updateState = useCallback(
+    (updates: Partial<typeof state>) => {
+      setState((prev) => {
+        const newState = { ...prev, ...updates };
+        updateUrl(newState);
+        return newState;
+      });
+    },
+    [updateUrl]
+  );
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setState(getUrlParams());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [getUrlParams]);
+
+  // Destructure state for easier access
+  const { gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven, showConfig } = state;
 
   return (
     <div className="w-[100svw] h-[100svh] relative">
@@ -27,8 +73,34 @@ function App() {
         />
       </Canvas>
 
+      {/* Toggle Button */}
+      <button
+        onClick={() => updateState({ showConfig: !showConfig })}
+        className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur-md rounded-lg p-3 text-white shadow-lg border border-gray-700/50 hover:bg-gray-800/90 transition-colors z-20"
+        title={showConfig ? 'Hide Controls' : 'Show Controls'}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {showConfig ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+          )}
+        </svg>
+      </button>
+
       {/* Control Panel */}
-      <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur-md rounded-xl p-6 text-white shadow-2xl border border-gray-700/50">
+      <div
+        className={`absolute top-16 left-4 bg-gray-900/90 backdrop-blur-md rounded-xl p-6 text-white shadow-2xl border border-gray-700/50 transition-all duration-300 ease-in-out ${
+          showConfig
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
+            : 'opacity-0 -translate-x-full pointer-events-none'
+        }`}
+      >
         <h3 className="text-xl font-bold mb-6 text-gray-100">Controls</h3>
 
         <div className="space-y-6">
@@ -41,7 +113,7 @@ function App() {
               min="1"
               max="100"
               value={gridSize}
-              onChange={(e) => setGridSize(Number(e.target.value))}
+              onChange={(e) => updateState({ gridSize: Number(e.target.value) })}
               className="w-full h-2 bg-gray-600 rounded-full appearance-none cursor-pointer 
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 
@@ -65,7 +137,7 @@ function App() {
               max=".5"
               step="0.001"
               value={scale}
-              onChange={(e) => setScale(Number(e.target.value))}
+              onChange={(e) => updateState({ scale: Number(e.target.value) })}
               className="w-full h-2 bg-gray-600 rounded-full appearance-none cursor-pointer 
                          focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 
@@ -89,7 +161,7 @@ function App() {
               max="1.0"
               step="0.001"
               value={thickness}
-              onChange={(e) => setThickness(Number(e.target.value))}
+              onChange={(e) => updateState({ thickness: Number(e.target.value) })}
               className="w-full h-2 bg-gray-600 rounded-full appearance-none cursor-pointer 
                          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 
@@ -109,7 +181,7 @@ function App() {
               <input
                 type="checkbox"
                 checked={mirrorOnUneven}
-                onChange={(e) => setMirrorOnUneven(e.target.checked)}
+                onChange={(e) => updateState({ mirrorOnUneven: e.target.checked })}
                 className="w-4 h-4 text-orange-500 bg-gray-700 border-gray-600 rounded 
                            focus:ring-orange-500 focus:ring-2 focus:ring-opacity-50"
               />
@@ -129,7 +201,7 @@ function App() {
                     onChange={(e) => {
                       const newEnabled = [...enabledTetrahedrons] as [boolean, boolean, boolean, boolean, boolean];
                       newEnabled[index] = e.target.checked;
-                      setEnabledTetrahedrons(newEnabled);
+                      updateState({ enabledTetrahedrons: newEnabled });
                     }}
                     className="w-3 h-3 text-cyan-500 bg-gray-700 border-gray-600 rounded 
                                focus:ring-cyan-500 focus:ring-1 focus:ring-opacity-50"
