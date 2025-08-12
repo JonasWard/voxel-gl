@@ -1,17 +1,16 @@
 import { useRef, useEffect } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { getVertexForMatrix, tetrahedronGeometries as tGs } from './tetrahedrons';
+import { baseBuffer, bases } from './tetrahedrons';
 
 const MR = new THREE.Matrix4().makeRotationX(Math.PI / 2);
 
-const ps = tGs.map(([, p]) => p);
-const p90s = ps.map((p) => getVertexForMatrix(p, MR));
-
-const gridCount = 50;
+const gridCount = 100;
 const M0 = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 const scale = 0.13;
-const thickness = 0.3;
+const thickness = 0.5;
+
+const baseVector = new THREE.Vector4(0.43, 0.43, 0.43, 1);
 
 // Gyroid SDF function
 const gyroidSDF = (x: number, y: number, z: number, scale: number = 1.0, thickness: number = 0.3) => {
@@ -34,46 +33,36 @@ const InstancedCubes: React.FC<{ tetrahedronIndex: 0 | 1 | 2 | 3 | 4 }> = ({ tet
     if (!meshRef.current) return;
 
     const matrices: THREE.Matrix4[] = [];
-    const xyz: [number, number, number][] = [];
+    const xyz: THREE.Vector4[] = [];
     const colors: THREE.Color[] = [];
+
+    const baseM = bases[tetrahedronIndex];
+    const baseMR = MR.clone().multiply(baseM);
+
+    const v = [baseM.elements[12], baseM.elements[13], baseM.elements[14]];
+    const vR = [baseMR.elements[12], baseMR.elements[13], baseMR.elements[14]];
 
     let i = 0;
 
     for (let x = 0; x < gridCount; x++) {
       for (let y = 0; y < gridCount; y++) {
         for (let z = 0; z < gridCount; z++) {
-          const M = new THREE.Matrix4();
-          xyz.push([x, y, z]);
-          M.setPosition(x, y, z);
-          if (i % 2) M.multiply(MR);
+          i = x + y + z;
+          const M = (i % 2 ? baseM : baseMR).clone();
+          i % 2 ? M.setPosition(x + v[0], y + v[1], z + v[2]) : M.setPosition(x + vR[0], y + vR[1], z + vR[2]);
           matrices.push(M);
+
+          const c = baseVector.clone().applyMatrix4(M);
+          xyz.push(c);
           // Create a gradient color based on position
-          colors.push(
-            new THREE.Color().setHSL(
-              ((x +
-                (i % 2 ? ps : p90s)[tetrahedronIndex][0] +
-                (y + (i % 2 ? ps : p90s)[tetrahedronIndex][1]) +
-                (z + (i % 2 ? ps : p90s)[tetrahedronIndex][2])) /
-                gridCount) *
-                5,
-              1.0,
-              0.5
-            )
-          );
+          colors.push(new THREE.Color().setHSL(((c.x + c.y + c.z) / gridCount) * 5, 1.0, 0.5));
         }
-        i++;
       }
     }
 
     matrices.forEach((M, i) => {
-      const [x, y, z] = xyz[i];
-      const g = gyroidSDF(
-        x + (i % 2 ? ps : p90s)[tetrahedronIndex][0],
-        y + (i % 2 ? ps : p90s)[tetrahedronIndex][1],
-        z + (i % 2 ? ps : p90s)[tetrahedronIndex][2],
-        scale,
-        thickness
-      );
+      const { x, y, z } = xyz[i];
+      const g = gyroidSDF(x, y, z, scale, thickness);
       if (g < 0) meshRef.current.setMatrixAt(i, M);
       else meshRef.current.setMatrixAt(i, M0);
 
@@ -81,13 +70,16 @@ const InstancedCubes: React.FC<{ tetrahedronIndex: 0 | 1 | 2 | 3 | 4 }> = ({ tet
     });
 
     meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
-    }
+    if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
   }, [meshRef.current]);
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, gridCount ** 3]} geometry={tGs[tetrahedronIndex][0]}>
+    <instancedMesh
+      frustumCulled={false}
+      ref={meshRef}
+      args={[undefined, undefined, gridCount ** 3]}
+      geometry={baseBuffer}
+    >
       <meshStandardMaterial />
     </instancedMesh>
   );
@@ -97,7 +89,8 @@ export const Scene = () => {
   return (
     <>
       <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 10]} intensity={1.6} />
+      <directionalLight position={[-10, -10, -10]} intensity={1.0} />
+      <directionalLight position={[10, 10, 10]} intensity={2.0} />
       <InstancedCubes tetrahedronIndex={0} />
       <InstancedCubes tetrahedronIndex={1} />
       <InstancedCubes tetrahedronIndex={2} />
