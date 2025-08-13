@@ -1,7 +1,10 @@
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './components/Scene';
+import { GeometrySelector } from './components/GeometrySelector';
 import { useState, useEffect, useCallback } from 'react';
 import { surfaceTypes, type SurfaceType } from './components/surfaces';
+
+export type GeometryType = 'tetrahedron' | 'cube';
 
 function App() {
   // Helper function to get URL parameters
@@ -17,7 +20,8 @@ function App() {
         .map((t) => t === 'true') as [boolean, boolean, boolean, boolean, boolean]) || [true, true, true, true, true],
       mirrorOnUneven: params.get('mirror') !== 'false',
       showConfig: params.get('showConfig') !== 'false',
-      surfaceType: (params.get('surface') as SurfaceType) || 'gyroid'
+      surfaceType: (params.get('surface') as SurfaceType) || 'gyroid',
+      geometryType: (params.get('geometry') as GeometryType) || 'tetrahedron'
     };
   }, []);
 
@@ -34,6 +38,7 @@ function App() {
     params.set('mirror', newState.mirrorOnUneven.toString());
     params.set('showConfig', newState.showConfig.toString());
     params.set('surface', newState.surfaceType);
+    params.set('geometry', newState.geometryType);
 
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
@@ -62,7 +67,8 @@ function App() {
   }, [getUrlParams]);
 
   // Destructure state for easier access
-  const { gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven, showConfig, surfaceType } = state;
+  const { gridSize, scale, thickness, enabledTetrahedrons, mirrorOnUneven, showConfig, surfaceType, geometryType } =
+    state;
 
   return (
     <div className="w-[100svw] h-[100svh] relative">
@@ -74,6 +80,7 @@ function App() {
           enabledTetrahedrons={enabledTetrahedrons}
           mirrorOnUneven={mirrorOnUneven}
           surfaceType={surfaceType}
+          geometryType={geometryType}
         />
       </Canvas>
 
@@ -203,6 +210,13 @@ function App() {
             </select>
           </div>
 
+          <GeometrySelector
+            geometryType={geometryType}
+            onGeometryChange={(geometry) => updateState({ geometryType: geometry })}
+            enabledTetrahedrons={enabledTetrahedrons}
+            onTetrahedronsChange={(tetrahedrons) => updateState({ enabledTetrahedrons: tetrahedrons })}
+          />
+
           {/* Mirror Switch */}
           <div className="space-y-2 pt-2 border-t border-gray-700">
             <label className="flex items-center space-x-3 cursor-pointer">
@@ -215,29 +229,6 @@ function App() {
               />
               <span className="text-sm font-semibold text-gray-200">Mirror on Uneven Indexes</span>
             </label>
-          </div>
-
-          {/* Tetrahedron Selection */}
-          <div className="space-y-3 pt-2 border-t border-gray-700">
-            <h4 className="text-sm font-bold text-gray-200">Tetrahedrons</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {enabledTetrahedrons.map((enabled, index) => (
-                <label key={index} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={(e) => {
-                      const newEnabled = [...enabledTetrahedrons] as [boolean, boolean, boolean, boolean, boolean];
-                      newEnabled[index] = e.target.checked;
-                      updateState({ enabledTetrahedrons: newEnabled });
-                    }}
-                    className="w-3 h-3 text-cyan-500 bg-gray-700 border-gray-600 rounded 
-                               focus:ring-cyan-500 focus:ring-1 focus:ring-opacity-50"
-                  />
-                  <span className="text-xs font-medium text-gray-300">T{index}</span>
-                </label>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -362,6 +353,14 @@ function App() {
               </select>
             </div>
 
+            <GeometrySelector
+              geometryType={geometryType}
+              onGeometryChange={(geometry) => updateState({ geometryType: geometry })}
+              enabledTetrahedrons={enabledTetrahedrons}
+              onTetrahedronsChange={(tetrahedrons) => updateState({ enabledTetrahedrons: tetrahedrons })}
+              isMobile={true}
+            />
+
             {/* Mirror Switch */}
             <div className="space-y-4 pt-4 border-t border-gray-700">
               <label className="flex items-center space-x-3 cursor-pointer">
@@ -374,29 +373,6 @@ function App() {
                 />
                 <span className="text-lg font-semibold text-gray-200">Mirror on Uneven Indexes</span>
               </label>
-            </div>
-
-            {/* Tetrahedron Selection */}
-            <div className="space-y-4 pt-4 border-t border-gray-700">
-              <h4 className="text-lg font-bold text-gray-200">Tetrahedrons</h4>
-              <div className="grid grid-cols-2 gap-3">
-                {enabledTetrahedrons.map((enabled, index) => (
-                  <label key={index} className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      onChange={(e) => {
-                        const newEnabled = [...enabledTetrahedrons] as [boolean, boolean, boolean, boolean, boolean];
-                        newEnabled[index] = e.target.checked;
-                        updateState({ enabledTetrahedrons: newEnabled });
-                      }}
-                      className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded 
-                                 focus:ring-cyan-500 focus:ring-2 focus:ring-opacity-50"
-                    />
-                    <span className="text-base font-medium text-gray-300">T{index}</span>
-                  </label>
-                ))}
-              </div>
             </div>
           </div>
         </div>
